@@ -1,0 +1,316 @@
+/* ============================================================
+   GALAXY UNIVERSE — Minimal Immersive CSS
+   Full-screen, no panels, no buttons, no dashboard
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #030712;
+}
+
+/* ── App Root ─────────────────────────────────────────── */
+.galaxy-app {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #030712;
+  font-family: 'Orbitron', 'Rajdhani', 'Courier New', monospace;
+}
+
+/* ── Galaxy Canvas Container ──────────────────────────── */
+#canvas-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#canvas-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Camera Corner Preview ────────────────────────────── */
+.cam-corner {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 20;
+  width: 160px;
+  height: 120px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(3, 7, 18, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(56, 189, 248, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cam-corner:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+/* ── Hand Tracking Component (inside cam-corner) ──────── */
+.camera-hud-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent;
+}
+
+.camera-hud-container video,
+.camera-hud-container canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror the feed */
+}
+
+.camera-hud-container canvas {
+  z-index: 2;
+}
+
+/* Scan-line effect overlay */
+.camera-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0,0,0,0.18) 50%),
+    linear-gradient(90deg, rgba(255,0,0,0.02), rgba(0,255,0,0.01), rgba(0,0,255,0.02));
+  background-size: 100% 2px, 4px 100%;
+}
+
+/* Recording badge */
+.camera-badge {
+  position: absolute;
+  top: 5px; left: 5px;
+  z-index: 4;
+  font-size: 0.48rem;
+  letter-spacing: 0.8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(3, 7, 18, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.camera-badge .rec-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 5px #ef4444;
+  animation: pulse-rec 1.5s infinite;
+}
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.camera-badge .rec-dot.loading {
+  background: #f59e0b;
+  box-shadow: 0 0 5px #f59e0b;
+  animation: pulse-amber 0.7s infinite;
+}
+
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+/* ── Camera enable / error overlay inside the preview box ─ */
+.camera-enable-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(3, 7, 18, 0.92);
+  z-index: 10;
+  cursor: pointer;
+}
+
+.camera-enable-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 8px;
+  color: #38bdf8;
+  font-family: inherit;
+  font-size: 0.6rem;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.camera-enable-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+/* Loading pulse ring */
+.camera-loading-pulse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+}
+
+.pulse-ring {
+  position: absolute;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  animation: ring-expand 1.4s ease-out infinite;
+}
+
+@keyframes ring-expand {
+  0%   { transform: scale(0.7); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* ── Hand Status Badge — top-right ──────────────────────── */
+.hand-status-badge {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(3, 7, 18, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(8px);
+  font-size: 0.6rem;
+  letter-spacing: 1.5px;
+  color: rgba(148, 163, 184, 0.7);
+  transition: all 0.4s ease;
+  pointer-events: none;
+}
+
+.hand-status-badge.detected {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(3, 7, 18, 0.75);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.2);
+}
+
+.status-dot-pulse {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(100, 116, 139, 0.6);
+  transition: all 0.4s ease;
+  flex-shrink: 0;
+}
+
+.hand-status-badge.detected .status-dot-pulse {
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: glow-ping 1.2s ease-in-out infinite;
+}
+
+@keyframes glow-ping {
+  0%, 100% { box-shadow: 0 0 6px #38bdf8; transform: scale(1); }
+  50%       { box-shadow: 0 0 14px #38bdf8; transform: scale(1.3); }
+}
+
+/* ── Camera Denied / Error Full Overlay ─────────────────── */
+.cam-error-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 7, 18, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.cam-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 40px;
+  background: rgba(10, 16, 31, 0.95);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  max-width: 320px;
+  text-align: center;
+}
+
+.cam-error-icon {
+  font-size: 2.5rem;
+}
+
+.cam-error-card p {
+  font-size: 0.82rem;
+  color: rgba(203, 213, 225, 0.85);
+  line-height: 1.6;
+  white-space: pre-line;
+  letter-spacing: 0.3px;
+}
+
+.cam-retry-btn {
+  padding: 10px 28px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 10px;
+  color: #38bdf8;
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cam-retry-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .cam-corner {
+    width: 110px;
+    height: 82px;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .hand-status-badge {
+    top: 10px;
+    right: 10px;
+    font-size: 0.52rem;
+    padding: 4px 10px;
+  }
+}

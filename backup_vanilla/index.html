@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Interactive 3D Galaxy – Control the Universe with Your Hands</title>
+  <meta name="description" content="Immersive 3D galaxy simulation controlled in real-time with hand gestures using MediaPipe Hands and Three.js. Close your hand to form a glowing sphere; open your hand to unleash a galaxy explosion.">
+  <meta name="theme-color" content="#030712">
+
+  <!-- Futuristic Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Core Styles -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Three.js 3D Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+  <div class="vignette-overlay"></div>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-notice" class="toast-notice">System Initialized</div>
+
+  <!-- HUD Interface Layer -->
+  <div class="hud-layer">
+    
+    <!-- Top Bar: Branding & Real-time Telemetry -->
+    <header class="top-bar">
+      <div class="brand-section">
+        <div class="title-row">
+          <svg class="galaxy-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            <path d="M12 2C6.48 2 2 6.48 2 12c0 2.5 1 4.7 2.6 6.4"/>
+            <path d="M22 12c0-5.52-4.48-10-10-10"/>
+            <path d="M12 22c5.52 0 10-4.48 10-10 0-2.5-1-4.7-2.6-6.4"/>
+            <path d="M2 12c0 5.52 4.48 10 10 10"/>
+          </svg>
+          <h1 class="hud-title">CHRONOS // GALAXY</h1>
+        </div>
+        <div class="hud-subtitle">
+          <span class="status-dot"></span>
+          <span>Neural Hand Control Engine</span>
+        </div>
+      </div>
+
+      <div class="top-stats">
+        <div class="hud-card">
+          <span class="card-label">Cosmic Particles</span>
+          <span class="card-value" id="particle-count">75,000 STARS</span>
+        </div>
+
+        <div class="hud-card purple">
+          <span class="card-label">Universe State</span>
+          <span class="card-value" id="state-value">GALAXY SPIRAL</span>
+        </div>
+
+        <div class="hud-card pink gesture-indicator-card">
+          <span class="card-label">Hand Tracking</span>
+          <div class="gesture-pill palm" id="gesture-pill">
+            <span id="gesture-text">OPEN PALM</span>
+          </div>
+          <div class="gesture-progress-bar">
+            <div class="gesture-progress-fill" id="gesture-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <div class="hud-card">
+          <span class="card-label">Engine FPS</span>
+          <span class="card-value" id="fps-value">60 FPS</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Center Guidance Prompt -->
+    <div class="center-guidance">
+      <div class="guidance-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+          <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+          <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+        </svg>
+        <span id="guidance-text">Close Fist = 3D Sphere &nbsp;|&nbsp; Open Palm = Galaxy Explosion &nbsp;|&nbsp; Move Hand = Navigate</span>
+      </div>
+    </div>
+
+    <!-- Bottom Bar: Camera HUD, Controls & Legend -->
+    <footer class="bottom-bar">
+
+      <!-- Webcam PiP HUD Box -->
+      <div class="camera-hud-container interactive" id="camera-hud">
+        <video id="webcam-video" autoplay playsinline muted></video>
+        <canvas id="webcam-overlay"></canvas>
+        <div class="camera-scanline"></div>
+
+        <div class="camera-badge">
+          <span class="rec-dot"></span>
+          <span id="camera-status-text">OPTICAL SENSOR</span>
+        </div>
+
+        <div class="camera-placeholder" id="camera-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <p>Camera Standby<br><span style="color: var(--neon-cyan);">Click "Initialize" to begin</span></p>
+        </div>
+      </div>
+
+      <!-- Center Bottom Control Dock -->
+      <div class="control-dock interactive">
+        <button class="hud-btn active" id="toggle-camera-btn" title="Toggle Webcam Feed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="btn-text">Camera</span>
+        </button>
+
+        <button class="hud-btn" id="reset-btn" title="Recalibrate Galaxy Orientation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span class="btn-text">Reset</span>
+        </button>
+
+        <button class="hud-btn active" id="toggle-audio-btn" title="Toggle Cosmic Synthesizer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          <span class="btn-text">Audio</span>
+        </button>
+
+        <button class="hud-btn" id="toggle-mouse-btn" title="Switch between Hand Detection and Mouse Mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="7"/>
+            <line x1="12" y1="6" x2="12" y2="10"/>
+          </svg>
+          <span class="btn-text">Mouse Mode</span>
+        </button>
+
+        <button class="hud-btn" id="settings-btn" title="Galaxy Appearance & Themes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span class="btn-text">Themes</span>
+        </button>
+      </div>
+
+      <!-- Right Legend / Gesture Quick Reference -->
+      <div class="legend-card">
+        <div class="legend-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>Hand Gestures</span>
+        </div>
+
+        <div class="legend-item">
+          <div class="legend-icon-badge pink">✊</div>
+          <div><strong>Closed Fist</strong><br>Collapse stars into glowing 3D sphere</div>
+        </div>
+
+        <div class="legend-item">
+          <div class="legend-icon-badge">✋</div>
+          <div><strong>Open Palm</strong><br>Explode into vast spiral galaxy</div>
+        </div>
+
+        <div class="legend-item">
+          <div class="legend-icon-badge">↔️</div>
+          <div><strong>Move Hand</strong><br>Pan & rotate universe in 3D</div>
+        </div>
+
+        <div class="legend-item">
+          <div class="legend-icon-badge">🔍</div>
+          <div><strong>Distance / Depth</strong><br>Move closer/further to zoom</div>
+        </div>
+      </div>
+
+    </footer>
+  </div>
+
+  <!-- Settings Drawer Flyout -->
+  <aside class="settings-drawer" id="settings-drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Cosmic Customizer</span>
+      <button class="drawer-close" id="close-drawer-btn">&times;</button>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">
+        <span>Nebula Color Theme</span>
+      </div>
+      <div class="theme-options">
+        <button class="theme-btn cyber-neon active" data-theme="cyber-neon" title="Cyber Neon"></button>
+        <button class="theme-btn cosmic-violet" data-theme="cosmic-violet" title="Cosmic Violet"></button>
+        <button class="theme-btn solar-gold" data-theme="solar-gold" title="Solar Flare"></button>
+        <button class="theme-btn deep-emerald" data-theme="deep-emerald" title="Emerald Nebula"></button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">
+        <span>Interaction Sensitivity</span>
+        <span class="val" id="sens-val">1.0x</span>
+      </div>
+      <input type="range" id="sensitivity-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">
+        <span>Keyboard Shortcut</span>
+      </div>
+      <p style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
+        Press <strong style="color: var(--neon-cyan);">[SPACEBAR]</strong> to instantly toggle between Sphere Singularity and Galaxy.
+      </p>
+    </div>
+  </aside>
+
+  <!-- Start Experience Onboarding Modal Overlay -->
+  <div class="intro-modal-backdrop" id="intro-modal-backdrop">
+    <div class="intro-modal">
+      <div class="intro-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          <circle cx="12" cy="12" r="5"/>
+        </svg>
+      </div>
+
+      <h2 class="intro-title">CONTROL THE UNIVERSE</h2>
+      <p class="intro-desc">
+        Welcome to an extraordinary interactive 3D universe. Use your real hands via webcam to harness thousands of stars with cutting-edge MediaPipe computer vision.
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-box">
+          <div class="feature-box-icon pink">✊</div>
+          <div>
+            <h4>Closed Fist</h4>
+            <p>Compress 75,000 scattered stars into a dense, glowing 3D spherical singularity.</p>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div class="feature-box-icon">✋</div>
+          <div>
+            <h4>Open Hand</h4>
+            <p>Release the sphere into a breathtaking logarithmic spiral galaxy explosion.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="start-btn" id="start-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <span>Initialize Universe</span>
+      </button>
+
+      <div class="modal-notice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>Camera processing runs 100% locally in your browser. No video is recorded or sent.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main ES6 App Orchestrator -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

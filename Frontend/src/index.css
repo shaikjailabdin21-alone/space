@@ -1,0 +1,36 @@
+:root {
+  --bg-color: #030712;
+  --neon-cyan: #38bdf8;
+  --neon-blue: #60a5fa;
+  --neon-purple: #c084fc;
+  --neon-pink: #f472b6;
+  --neon-gold: #facc15;
+  --neon-emerald: #34d399;
+  --glass-bg: rgba(10, 16, 31, 0.72);
+  --glass-border: rgba(56, 189, 248, 0.25);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --hud-font: 'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --body-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  font-family: var(--body-font);
+  color: var(--text-primary);
+}
+
+canvas {
+  display: block;
+}
