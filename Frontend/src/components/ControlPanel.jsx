@@ -37,10 +37,6 @@ export const ControlPanel = ({
   onToggleCamera,
   audioMuted = false,
   onToggleAudio,
-  micActive = false,
-  onToggleMic,
-  voiceActive = false,
-  onToggleVoice,
   mouseModeActive = false,
   onToggleMouseMode,
   onReset,
@@ -286,31 +282,6 @@ export const ControlPanel = ({
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
               </svg>
               <span className="btn-text">Audio</span>
-            </button>
-
-            <button
-              className={`hud-btn ${voiceActive ? 'active voice-active' : ''}`}
-              onClick={onToggleVoice}
-              title="Toggle Voice Commands (Web Speech API)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-              </svg>
-              <span className="btn-text">Voice</span>
-            </button>
-
-            <button
-              className={`hud-btn ${micActive ? 'active' : ''}`}
-              onClick={onToggleMic}
-              title="Toggle Live Music Reactivity (Mic)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-              <span className="btn-text">Music FX</span>
             </button>
 
             {/* Feature 11: Gesture Customizer Modal Open */}

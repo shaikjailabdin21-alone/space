@@ -19,11 +19,9 @@ class CosmicAudioSynthesizer {
     this.tensionGain = null;
     this.tensionFilter = null;
 
-    // Real-time Audio Analyzer for Music / Microphone Reactivity
+    // Analyzer for the procedural audio output.
     this.analyser = null;
     this.dataArray = null;
-    this.micStream = null;
-    this.isMicActive = false;
   }
 
   init() {
@@ -252,33 +250,6 @@ class CosmicAudioSynthesizer {
       osc.start(now);
       osc.stop(now + 1.2);
     } catch (e) {}
-  }
-
-  /**
-   * Toggle Microphone Audio Input for Live Music Reactivity
-   */
-  async toggleMicInput() {
-    if (!this.isInitialized) this.init();
-    if (this.isMicActive) {
-      if (this.micStream) {
-        this.micStream.getTracks().forEach(t => t.stop());
-        this.micStream = null;
-      }
-      this.isMicActive = false;
-      return false;
-    }
-
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const micSource = this.ctx.createMediaStreamSource(this.micStream);
-      micSource.connect(this.analyser);
-      this.isMicActive = true;
-      return true;
-    } catch (err) {
-      console.warn('Mic access denied or unavailable:', err);
-      this.isMicActive = false;
-      return false;
-    }
   }
 
   /**

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   generateSpiralGalaxy,
   generateSphere,
+  generateWorm,
   generateParticleBeam,
   generateTwoRings,
   generateThreeRings,
@@ -31,6 +32,7 @@ export class ParticleSystem {
     this.shapes = {
       palm: generateSpiralGalaxy(particleCount),
       fist: generateSphere(particleCount),
+      worm: generateWorm(particleCount),
       point: generateParticleBeam(particleCount),
       two_fingers: generateTwoRings(particleCount),
       three_fingers: generateThreeRings(particleCount),
@@ -122,7 +124,7 @@ export class ParticleSystem {
         uPointSizeScale: { value: window.innerHeight * 0.85 },
         uAudioBass: { value: 0.0 },
         uAudioIntensity: { value: 0.0 },
-        uShapeMode: { value: 0.0 }, // 0: Galaxy, 1: Sphere, 2: Beam, 3: Rings, 4: Pinch, 5: Portal, 6: Supernova, 7: Energy Ball, 8: Geometry
+        uShapeMode: { value: 0.0 }, // 0: Galaxy, 1: Sphere, 2: Beam, 3: Rings, 4: Pinch, 5: Portal, 6: Supernova, 7: Energy Ball, 8: Geometry, 9: Worm
         uGravityMode: { value: 0.0 }, // 0: Off, 1: Attract, 2: Repel, 3: Orbit
         uGravityCenter: { value: new THREE.Vector3(0, 0, 0) },
         uGravityStrength: { value: 1.0 },
@@ -247,7 +249,7 @@ export class ParticleSystem {
             // Energy Ball: High-frequency electrical plasma vibration
             float vib = sin(uTime * 18.0 + aRandom * 25.0) * 0.8;
             pEnd += normalize(pEnd + 0.001) * vib;
-          } else if (uShapeMode > 7.5) {
+          } else if (uShapeMode > 7.5 && uShapeMode < 8.5) {
             // 3D Geometric Formations (Cube, Pyramid, Star, Diamond, Torus): Multiaxial tumble
             float gAngleY = uTime * 0.55;
             float cosY = cos(gAngleY);
@@ -257,6 +259,13 @@ export class ParticleSystem {
             float cosX = cos(gAngleX);
             float sinX = sin(gAngleX);
             pEnd.yz = vec2(pEnd.y * cosX - pEnd.z * sinX, pEnd.y * sinX + pEnd.z * cosX);
+          } else if (uShapeMode > 8.5 && uShapeMode < 9.5) {
+            // Living worm: a travelling wave bends the volumetric particle body.
+            float along = pEnd.x / 82.0;
+            float wave = sin(along * 13.0 - uTime * 3.0 + aRandom * 0.35);
+            pEnd.y += wave * (2.8 + abs(along) * 3.0);
+            pEnd.z += cos(along * 9.0 - uTime * 2.2) * 1.8;
+            pEnd.yz *= 1.0 + 0.10 * sin(uTime * 5.0 + along * 12.0);
           }
 
           // 3. Fluid Swirl Path During Transformation
@@ -432,6 +441,7 @@ export class ParticleSystem {
     else if (gesture === 'portal') modeVal = 5.0;
     else if (gesture === 'supernova') modeVal = 6.0;
     else if (gesture === 'energy_ball') modeVal = 7.0;
+    else if (gesture === 'worm') modeVal = 9.0;
     else if (['cube', 'pyramid', 'star', 'diamond', 'torus'].includes(gesture)) modeVal = 8.0;
 
     if (this.material) {

@@ -120,6 +120,21 @@ export function generateSphere(count, sphereRadius = 16.0) {
   return positions;
 }
 
+/** Smooth, volumetric particle body used by the hand-following worm mode. */
+export function generateWorm(count, length = 82.0, radius = 5.5) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    const t = Math.random();
+    const angle = Math.random() * Math.PI * 2;
+    const localRadius = radius * Math.sqrt(Math.random());
+    positions[i3] = (t - 0.5) * length;
+    positions[i3 + 1] = Math.cos(angle) * localRadius;
+    positions[i3 + 2] = Math.sin(angle) * localRadius;
+  }
+  return positions;
+}
+
 /**
  * 3. One Finger Pointing → Concentrated Particle Beam / Plasma Ray
  * Collimated beam aligned along the pointing direction with energetic spiral sheath

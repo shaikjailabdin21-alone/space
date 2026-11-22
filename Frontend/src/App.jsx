@@ -3,143 +3,133 @@ import { GalaxyScene } from './components/GalaxyScene';
 import { HandTracking } from './components/HandTracking';
 import './App.css';
 
+const MODE_LABELS = {
+  palm: 'GALAXY', fist: '3D BALL', point: 'PARTICLE BEAM',
+  two_fingers: 'TWO RINGS', three_fingers: 'THREE RINGS',
+  four_fingers: 'FOUR RINGS', pinch: 'PINCH FIELD',
+  both_open: 'EXPANDED GALAXY', both_closed: 'COMPRESSED CORE', worm: 'LIVING WORM'
+};
+
 export function App() {
-  // Core gesture + position state (drives the galaxy)
-  const [currentGesture, setCurrentGesture] = useState('palm');
-  const [handOffset, setHandOffset] = useState({ x: 0, y: 0, z: 1.0 });
+  const [mode, setMode] = useState('palm');
+  const [handOffset, setHandOffset] = useState({ x: 0, y: 0, z: 1 });
   const [isHandDetected, setIsHandDetected] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState(null); // null | 'denied' | 'unavailable'
-
-  // Smooth return-to-center when no hand detected
+  const [cameraError, setCameraError] = useState(null);
+  const [handStatus, setHandStatus] = useState('off');
   const returnTimerRef = useRef(null);
-  const lastOffsetRef = useRef({ x: 0, y: 0, z: 1.0 });
 
-  // Auto-activate camera after a short delay (gives scene time to render first)
   useEffect(() => {
-    const t = setTimeout(() => setCameraActive(true), 800);
-    return () => clearTimeout(t);
-  }, []);
-
-  // When hand disappears, smoothly return galaxy to center
-  useEffect(() => {
-    if (!isHandDetected) {
-      returnTimerRef.current = setInterval(() => {
-        setHandOffset(prev => {
-          const nx = prev.x * 0.88;
-          const ny = prev.y * 0.88;
-          const nz = prev.z + (1.0 - prev.z) * 0.08;
-          lastOffsetRef.current = { x: nx, y: ny, z: nz };
-          if (Math.abs(nx) < 0.005 && Math.abs(ny) < 0.005 && Math.abs(nz - 1.0) < 0.005) {
-            clearInterval(returnTimerRef.current);
-            return { x: 0, y: 0, z: 1.0 };
-          }
-          return { x: nx, y: ny, z: nz };
-        });
-      }, 16);
-    } else {
+    if (isHandDetected) {
       clearInterval(returnTimerRef.current);
+      return undefined;
     }
+    returnTimerRef.current = window.setInterval(() => {
+      setHandOffset(previous => {
+        const next = {
+          x: previous.x * 0.88,
+          y: previous.y * 0.88,
+          z: previous.z + (1 - previous.z) * 0.08
+        };
+        if (Math.abs(next.x) < 0.005 && Math.abs(next.y) < 0.005 && Math.abs(next.z - 1) < 0.005) {
+          clearInterval(returnTimerRef.current);
+          return { x: 0, y: 0, z: 1 };
+        }
+        return next;
+      });
+    }, 16);
     return () => clearInterval(returnTimerRef.current);
   }, [isHandDetected]);
 
-  // Gesture callback — maps raw gestures to galaxy formations
-  const handleGestureChange = useCallback((rawGesture) => {
-    // Map gestures to galaxy states
-    const gestureMap = {
-      palm: 'palm',
-      fist: 'fist',
-      point: 'point',
-      two_fingers: 'two_fingers',
-      three_fingers: 'three_fingers',
-      four_fingers: 'four_fingers',
-      pinch: 'pinch',
-      both_open: 'both_open',
-      both_closed: 'both_closed',
-    };
-    setCurrentGesture(gestureMap[rawGesture] || 'palm');
+  const handleGestureChange = useCallback(nextMode => {
+    if (MODE_LABELS[nextMode]) setMode(nextMode);
   }, []);
 
-  // Tracking data callback — position, zoom, hand presence
-  const handleTrackingData = useCallback((data) => {
+  const handleTrackingData = useCallback(data => {
     setIsHandDetected(data.isHandDetected);
-
     if (data.isHandDetected) {
-      setHandOffset({
-        x: data.handX,
-        y: data.handY,
-        z: data.handZoom,
-      });
-      lastOffsetRef.current = { x: data.handX, y: data.handY, z: data.handZoom };
+      setHandStatus('detected');
+      setHandOffset({ x: data.handX, y: data.handY, z: data.handZoom });
+    } else {
+      setHandStatus(cameraActive ? 'searching' : 'off');
     }
-  }, []);
+  }, [cameraActive]);
 
-  // Camera error callback from HandTracking
-  const handleCameraError = useCallback((errorType) => {
+  const cameraErrorText = {
+    denied: 'Camera permission was denied. Allow camera access for this site in browser settings, then retry.',
+    'insecure-context': 'Camera access requires HTTPS or localhost. Open this site on a secure connection.',
+    'camera-unsupported': 'This browser does not provide camera access. Try a current version of Chrome, Edge, or Safari.',
+    'tracker-unavailable': 'The hand-tracking model did not load. Check your connection and retry.',
+    'not-found': 'No camera was found. Connect or enable a camera, then retry.',
+    'camera-busy': 'The camera is already in use or could not start. Close other camera apps and retry.',
+    'camera-unavailable': 'The camera could not start. Check browser and operating-system camera settings, then retry.'
+  }[cameraError] || 'Camera access failed. Check browser permissions and retry.';
+  const localCameraUrl = `http://localhost:${window.location.port || '3000'}${window.location.pathname}`;
+
+  const handleCameraError = useCallback(errorType => {
     setCameraError(errorType);
+    setHandStatus(errorType === 'denied' ? 'permission denied' : 'unavailable');
   }, []);
 
-  // Retry camera
-  const handleRetryCamera = useCallback(() => {
+  const retryCamera = () => {
     setCameraError(null);
     setCameraActive(false);
-    setTimeout(() => setCameraActive(true), 150);
-  }, []);
+    window.setTimeout(() => setCameraActive(true), 200);
+  };
 
   return (
     <div className="galaxy-app">
-      {/* Full-screen 3D Galaxy — always visible */}
-      <GalaxyScene
-        gesture={currentGesture}
-        handOffset={handOffset}
-      />
+      <GalaxyScene gesture={mode} handOffset={handOffset} />
 
-      {/* Tiny webcam feed with hand skeleton — bottom-right corner */}
       <div className="cam-corner">
         <HandTracking
           isActive={cameraActive}
           onGestureChange={handleGestureChange}
           onTrackingData={handleTrackingData}
           onCameraError={handleCameraError}
+          onStatus={setHandStatus}
           sensitivity={1.0}
         />
       </div>
 
-      {/* Minimal status badge — top-right */}
+      <header className="control-panel" aria-label="Galaxy controls">
+        <div className="panel-brand">
+          <span className="brand-mark">✦</span>
+          <div><strong>CHRONOS</strong><small>GESTURE GALAXY</small></div>
+        </div>
+        <div className="panel-readouts">
+          <div><small>CURRENT MODE</small><b>{MODE_LABELS[mode]}</b></div>
+          <div><small>HAND TRACKING</small><b className={isHandDetected ? 'is-live' : ''}>{handStatus.toUpperCase()}</b></div>
+          <div><small>DETECTED GESTURE</small><b>{isHandDetected ? MODE_LABELS[mode] : 'SHOW YOUR HAND'}</b></div>
+        </div>
+        <div className="panel-actions">
+          <button className={cameraActive ? 'active' : ''} onClick={() => { setCameraError(null); setCameraActive(value => !value); }}>
+            {cameraActive ? '◉ Hand Tracking On' : '○ Enable Hand Tracking'}
+          </button>
+        </div>
+        <div className="command-hint">
+          <small>HAND GESTURES</small>
+          <span>Open palm · Fist · Point · Two / three / four fingers · Pinch · Both palms / both fists · Joined index + middle</span>
+        </div>
+      </header>
+
       <div className={`hand-status-badge ${isHandDetected ? 'detected' : ''}`}>
         <span className="status-dot-pulse" />
-        <span>
-          {isHandDetected
-            ? (currentGesture === 'three_fingers' ? '3 RINGS' :
-               currentGesture === 'four_fingers' ? '4 RINGS' :
-               currentGesture === 'two_fingers' ? '2 RINGS' :
-               currentGesture === 'point' ? 'BEAM' :
-               currentGesture === 'fist' ? 'SPHERE' :
-               currentGesture === 'pinch' ? 'PINCH' :
-               currentGesture === 'both_open' ? 'EXPAND' :
-               currentGesture === 'both_closed' ? 'COMPRESS' :
-               'HAND DETECTED')
-            : 'SHOW YOUR HAND'}
-        </span>
+        <span>{isHandDetected ? `${MODE_LABELS[mode]} ACTIVE` : 'HAND TRACKING STANDBY'}</span>
       </div>
 
-      {/* Camera denied overlay — centred, dismissable */}
       {cameraError && (
-        <div className="cam-error-overlay">
-          <div className="cam-error-card">
-            <div className="cam-error-icon">{cameraError === 'denied' ? '🚫' : '📷'}</div>
-            <p>
-              {cameraError === 'denied'
-                ? 'Camera permission denied.\nAllow camera access in your browser settings, then retry.'
-                : 'No camera found on this device.'}
-            </p>
-            {cameraError === 'denied' && (
-              <button className="cam-retry-btn" onClick={handleRetryCamera}>
-                ↺ Retry Camera
-              </button>
-            )}
-          </div>
-        </div>
+        <div className="cam-error-overlay"><div className="cam-error-card">
+          <div className="cam-error-icon">{cameraError === 'denied' ? '🚫' : '📷'}</div>
+          <p>{cameraErrorText}</p>
+          {cameraError === 'insecure-context' && (
+            <>
+              <p className="camera-origin">Current address: {window.location.origin}</p>
+              <a className="cam-retry-btn local-camera-link" href={localCameraUrl}>Open this computer at localhost</a>
+            </>
+          )}
+          <button className="cam-retry-btn" onClick={retryCamera}>↺ Retry Camera</button>
+        </div></div>
       )}
     </div>
   );

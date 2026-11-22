@@ -14,20 +14,25 @@ export const HandTracking = ({
   onGestureChange,
   onTrackingData,
   onCameraError,
+  onStatus,
   sensitivity = 1.0,
 }) => {
+  const callbacksRef = useRef({});
+  callbacksRef.current = { onGestureChange, onTrackingData, onCameraError, onStatus };
   const videoRef   = useRef(null);
   const canvasRef  = useRef(null);
   const handsRef   = useRef(null);
-  const cameraRef  = useRef(null);
   const streamRef  = useRef(null);
+  const frameRef = useRef(null);
   const isRunningRef = useRef(false);
 
   // Gesture stabilization
   const currentGestureRef   = useRef('palm');
   const candidateGestureRef = useRef('palm');
   const candidateCountRef   = useRef(0);
-  const STABILIZATION_THRESHOLD = 2;
+  const lastGestureSwitchRef = useRef(0);
+  const STABILIZATION_THRESHOLD = 5;
+  const GESTURE_SWITCH_COOLDOWN_MS = 420;
 
   // Smooth tracking refs (avoid React re-render on every frame)
   const handXRef    = useRef(0);
@@ -44,6 +49,7 @@ export const HandTracking = ({
 
     async function initMediaPipe() {
       setStatus('loading');
+      callbacksRef.current.onStatus?.('loading');
 
       // Wait for MediaPipe Hands CDN script (up to 9 s)
       let attempts = 0;
@@ -55,15 +61,27 @@ export const HandTracking = ({
 
       if (typeof window.Hands === 'undefined') {
         setStatus('unavailable');
-        onCameraError?.('unavailable');
+        callbacksRef.current.onStatus?.('unavailable');
+        callbacksRef.current.onCameraError?.('tracker-unavailable');
         return;
       }
 
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          const reason = window.isSecureContext === false ? 'insecure-context' : 'camera-unsupported';
+          setStatus('unavailable');
+          callbacksRef.current.onStatus?.('unavailable');
+          callbacksRef.current.onCameraError?.(reason);
+          return;
+        }
         // Request camera permission explicitly so we catch denial cleanly
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' }
         });
+        if (isCancelled) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
         streamRef.current = stream;
 
         const hands = new window.Hands({
@@ -81,46 +99,54 @@ export const HandTracking = ({
         handsRef.current = hands;
 
         const video = videoRef.current;
-        if (!video) return;
+        if (!video) throw new Error('Camera preview element is unavailable');
 
-        if (typeof window.Camera !== 'undefined') {
-          // MediaPipe Camera helper handles getUserMedia internally
-          stream.getTracks().forEach(t => t.stop());
-          streamRef.current = null;
-
-          const mp_camera = new window.Camera(video, {
-            onFrame: async () => {
-              if (isRunningRef.current && handsRef.current)
-                await handsRef.current.send({ image: video });
-            },
-            width: 320,
-            height: 240
-          });
-          await mp_camera.start();
-          cameraRef.current = mp_camera;
-        } else {
-          video.srcObject = stream;
-          await video.play();
-
-          const loop = async () => {
-            if (!isRunningRef.current || isCancelled) return;
-            if (video.readyState >= 2 && handsRef.current)
-              await handsRef.current.send({ image: video });
-            requestAnimationFrame(loop);
-          };
-          requestAnimationFrame(loop);
+        video.srcObject = stream;
+        await video.play();
+        if (isCancelled) {
+          cleanup();
+          return;
         }
-
         isRunningRef.current = true;
         setStatus('active');
+        callbacksRef.current.onStatus?.('searching');
+
+        const processFrame = async () => {
+          if (!isRunningRef.current || isCancelled) return;
+          try {
+            if (video.readyState >= 2 && handsRef.current) {
+              await handsRef.current.send({ image: video });
+            }
+          } catch (frameError) {
+            console.warn('Hand tracking frame failed:', frameError);
+          }
+          if (isRunningRef.current && !isCancelled) frameRef.current = requestAnimationFrame(processFrame);
+        };
+        frameRef.current = requestAnimationFrame(processFrame);
       } catch (err) {
+        if (isCancelled) return;
+        cleanup();
         console.warn('Camera error:', err.name, err.message);
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setStatus('denied');
-          onCameraError?.('denied');
+          callbacksRef.current.onStatus?.('permission denied');
+          callbacksRef.current.onCameraError?.('denied');
+        } else if (err.name === 'SecurityError' && window.isSecureContext === false) {
+          setStatus('unavailable');
+          callbacksRef.current.onStatus?.('unavailable');
+          callbacksRef.current.onCameraError?.('insecure-context');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setStatus('unavailable');
+          callbacksRef.current.onStatus?.('unavailable');
+          callbacksRef.current.onCameraError?.('not-found');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setStatus('unavailable');
+          callbacksRef.current.onStatus?.('unavailable');
+          callbacksRef.current.onCameraError?.('camera-busy');
         } else {
           setStatus('unavailable');
-          onCameraError?.('unavailable');
+          callbacksRef.current.onStatus?.('unavailable');
+          callbacksRef.current.onCameraError?.('camera-unavailable');
         }
       }
     }
@@ -130,6 +156,7 @@ export const HandTracking = ({
     } else {
       cleanup();
       setStatus('idle');
+      callbacksRef.current.onStatus?.('off');
     }
 
     return () => {
@@ -140,9 +167,11 @@ export const HandTracking = ({
 
   const cleanup = () => {
     isRunningRef.current = false;
-    if (cameraRef.current) {
-      try { cameraRef.current.stop(); } catch (_) {}
-      cameraRef.current = null;
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    if (handsRef.current) {
+      try { handsRef.current.close(); } catch (_) {}
+      handsRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
@@ -178,7 +207,7 @@ export const HandTracking = ({
       }
       classifyGestures(handsList, canvas.width, canvas.height);
     } else {
-      onTrackingData?.({
+      callbacksRef.current.onTrackingData?.({
         isHandDetected: false,
         gesture: currentGestureRef.current,
         openFactor: openFactorRef.current,
@@ -257,27 +286,25 @@ export const HandTracking = ({
     const isFist        = (curledCount >= 3 && !isOneFinger && !isTwoFingers && !isThreeFingers && !isFourFingers) ||
                           (!isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended);
     const isPalm        = isIndexExtended && isMiddleExtended && isRingExtended && isPinkyExtended && isThumbExtended;
+    const indexMiddleGap = Math.hypot(
+      indexTip.x - middleTip.x,
+      indexTip.y - middleTip.y,
+      (indexTip.z || 0) - (middleTip.z || 0)
+    ) / handScale;
+    const isJoinedIndexMiddle = isIndexExtended && isMiddleExtended &&
+      indexMiddleGap < (isRingExtended && isPinkyExtended ? 0.15 : 0.34);
 
     let pose = 'palm';
-    if (isPinch) {
-      pose = 'pinch';
-    } else if (isOneFinger) {
-      pose = 'point';
-    } else if (isTwoFingers) {
-      pose = 'two_fingers';
-    } else if (isThreeFingers) {
-      pose = 'three_fingers';
-    } else if (isFourFingers) {
-      pose = 'four_fingers';
-    } else if (isFist) {
-      pose = 'fist';
-    } else if (isPalm || extendedCount >= 4) {
-      pose = 'palm';
-    } else {
-      pose = openFactor < 0.35 ? 'fist' : 'palm';
-    }
+    if (isPinch) pose = 'pinch';
+    else if (isOneFinger) pose = 'point';
+    else if (isTwoFingers) pose = 'two_fingers';
+    else if (isThreeFingers) pose = 'three_fingers';
+    else if (isFourFingers) pose = 'four_fingers';
+    else if (isFist) pose = 'fist';
+    else if (isPalm || extendedCount >= 4) pose = 'palm';
+    else pose = openFactor < 0.35 ? 'fist' : 'palm';
 
-    return { pose, openFactor, palmCenter, handScale, isPinch };
+    return { pose, openFactor, palmCenter, handScale, isPinch, isJoinedIndexMiddle };
   };
 
   /* ── Multi-hand Classifier + Navigation ─────────────── */
@@ -286,7 +313,7 @@ export const HandTracking = ({
     const hand1    = evaluateSingleHand(handsList[0]);
     let hand2 = null;
 
-    let rawGesture = hand1.pose;
+    let rawGesture = hand1.isJoinedIndexMiddle ? 'worm' : hand1.pose;
     if (numHands === 2) {
       hand2 = evaluateSingleHand(handsList[1]);
       if ((hand1.pose === 'palm' || hand1.openFactor > 0.6) &&
@@ -307,13 +334,15 @@ export const HandTracking = ({
     }
 
     let finalGesture = currentGestureRef.current;
-    if (candidateCountRef.current >= STABILIZATION_THRESHOLD) {
+    const cooldownFinished = Date.now() - lastGestureSwitchRef.current >= GESTURE_SWITCH_COOLDOWN_MS;
+    if (candidateCountRef.current >= STABILIZATION_THRESHOLD && cooldownFinished) {
       finalGesture = candidateGestureRef.current;
     }
 
     if (finalGesture !== currentGestureRef.current) {
       currentGestureRef.current = finalGesture;
-      onGestureChange?.(finalGesture, hand1.openFactor);
+      lastGestureSwitchRef.current = Date.now();
+      callbacksRef.current.onGestureChange?.(finalGesture, hand1.openFactor);
     }
 
     // Pan / Zoom from palm center
@@ -326,7 +355,7 @@ export const HandTracking = ({
     handZoomRef.current += (zoom  - handZoomRef.current) * 0.25;
     openFactorRef.current += (hand1.openFactor - openFactorRef.current) * 0.28;
 
-    onTrackingData?.({
+    callbacksRef.current.onTrackingData?.({
       isHandDetected: true,
       gesture: finalGesture,
       openFactor: openFactorRef.current,
@@ -334,7 +363,6 @@ export const HandTracking = ({
       handY: handYRef.current,
       handZoom: handZoomRef.current,
       numHands,
-      isPinch: hand1.isPinch,
     });
   };
 

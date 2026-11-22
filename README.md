@@ -10,13 +10,14 @@ Whatever hand shape the camera detects, the 75,000 stars immediately transform i
 
 | Hand Pose Detected | 3D Star Universe Transformation | Visual Behavior |
 | :--- | :--- | :--- |
-| ✊ **Closed Fist** | **3D Spherical Singularity** | All 75,000 stars gather inward into a dense, glowing 3D spherical ball with coronal plasma vibration. |
-| ✋ **Open Palm** | **Spiral Galaxy** | Stars immediately explode and spread outward into a multi-arm logarithmic spiral galaxy with differential orbital rotation. |
-| ☝️ **One Finger Pointing** | **Concentrated Particle Beam** | Stars align into a high-velocity collimated particle laser ray streaming along the pointer vector with a helical sheath. |
-| ✌️ **Two Fingers Raised** | **Two Rotating Particle Rings** | Stars form two distinct intersecting concentric gyroscopic rings rotating at high velocity on orthogonal axes. |
-| 🤏 **Pinch Gesture** | **Magnetic Attraction Field** | Particles violently contract and swirl directly towards the user's pinch coordinate in 3D space. |
-| 🙌 **Both Hands Open** | **Super-Expanded Galaxy** | Deep volumetric expansion (1.9x radius) with accelerated rotation and wide stellar dispersion across the screen. |
-| 👊 **Both Hands Closed** | **Ultra-Dense Micro Core** | Extreme compression of the entire universe into a blazing micro-singularity ($R \le 5.5$). |
+| ✋ **Open Palm** | **Galaxy** | Stars form a multi-arm logarithmic spiral galaxy. |
+| ✊ **Closed Fist** | **3D Ball** | Stars gather into a glowing volumetric sphere. |
+| ☝️ **One Index Finger Pointing Up** | **Particle Beam** | Stars form a directional beam. |
+| 🫱 **Index and Middle Fingertips Joined** | **Worm** | A flexible, glowing particle body follows hand movement. |
+| ✌️ **Two Fingers** | **Two Rings** | Stars form two orbital rings. |
+| 🤏 **Pinch** | **Pinch Field** | Stars gather around the hand. |
+| 👐 **Both Hands Open** | **Expanded Galaxy** | The galaxy spreads outward. |
+| ✊ **Both Hands Closed** | **Compressed Core** | Stars gather into a dense core. |
 
 ### 🚀 3D Spatial Navigation (Move Right, Left, Up, Down)
 
@@ -35,10 +36,10 @@ In addition to hand shape recognition, your hand position in space dynamically m
 ## ⚡ Performance & Zero-Latency Architecture
 
 - **60 FPS Real-Time AI Vision**: Tracks all 21 3D landmarks per hand at up to 60 FPS using MediaPipe Hand Landmarker via WebRTC.
-- **De-Flickering Stabilization Threshold**: Fast 2-frame stabilization buffer prevents classification fluttering while maintaining instant response times.
+- **Gesture Stabilization**: Five consistent tracking frames and a short mode-switch cooldown reduce accidental formation changes.
 - **Direct GPU Shader Morphing**: All shape transitions occur directly on the GPU using custom GLSL shaders with S-curve interpolation and differential rotation dynamics.
 - **Zero-Latency State Synchronization**: Uses `useRef` for high-frequency tracking data to eliminate unnecessary React re-renders, keeping the render loop running smoothly at 60 FPS.
-- **Dual-Hand Support**: Automatically switches between single-hand gestures and two-handed expansion/compression modes when both hands enter the webcam frame.
+- **Dual-Hand Support**: Tracks both hands for expanded-galaxy and compressed-core gestures.
 
 ---
 
@@ -54,7 +55,7 @@ In addition to hand shape recognition, your hand position in space dynamically m
    ```
 3. Open the displayed URL in your browser:
    👉 **`http://localhost:3000`**
-4. Click **"Initialize Hand Tracker"**, allow webcam access, and watch the galaxy transform instantly to your hand shapes!
+4. Enable hand tracking, allow webcam access, and use the gestures above to transform the particle formations.
 
 ---
 
@@ -84,8 +85,7 @@ stars/
             ├── GalaxyShapes.jsx      # 7 gesture coordinate algorithms & 4 nebula themes
             ├── GestureController.jsx  # Input events & keyboard/mouse fallback
             ├── HandTracking.jsx      # MediaPipe 21-joint landmarker & motion tracking
-            ├── MusicController.jsx   # Microphone audio frequency analyzer
+            ├── MusicController.jsx   # Procedural audio frequency analyzer
             ├── ParticleSystem.jsx    # 75,000 star GPU GLSL shaders & morphing
             ├── ShootingStars.jsx     # Dynamic meteor streaks
-            └── VoiceCommands.jsx     # Web Speech API voice triggers
 ```

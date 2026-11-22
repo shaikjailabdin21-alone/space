@@ -85,6 +85,7 @@ export const GalaxyScene = ({
     particles.setGestureFormation('palm');
     particlesRef.current = particles;
 
+
     // ── Shooting Stars ─────────────────────────────
     const shootingStars = new ShootingStarsManager(scene);
 
@@ -146,7 +147,7 @@ export const GalaxyScene = ({
         mesh.rotation.x = smoothRot.x * 1.8;
       } else {
         const spin = Math.abs(rawX) > 0.18 ? rawX * delta * 1.1 : 0;
-        mesh.rotation.y += smoothRot.y * 0.045 + spin + elapsed * 0.018;
+        mesh.rotation.y += smoothRot.y * 0.045 + spin + delta * 0.24;
         mesh.rotation.x  = smoothRot.x + 0.32;
       }
 
